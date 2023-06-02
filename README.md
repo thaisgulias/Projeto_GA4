@@ -6,7 +6,7 @@ a) Conversão por etapa da jornada do usuário (busca, escolha do produto, adiç
 
 b) Resultados por fonte de tráfego: Analisando os resultados por fonte de tráfego, é possível identificar quais canais de marketing estão gerando mais visitas e conversões para o ecommerce. Isso permite tomar decisões estratégicas sobre o investimento em diferentes canais e otimizar as campanhas para obter melhores resultados.
 
-c) Produtos mais vendidos: Através da análise dos produtos mais adicionados ao carrinho, é possível identificar quais são os itens de maior interesse para os clientes. Isso pode auxiliar na tomada de decisões sobre o mix de produtos, promoções e estratégias de precificação.
+c) Produtos adicionados ao carrinho: Através da análise dos produtos mais adicionados ao carrinho, é possível identificar quais são os itens de maior interesse para os clientes. Isso pode auxiliar na tomada de decisões sobre o mix de produtos, promoções e estratégias de precificação.
 
 d) Distribuição geográfica dos clientes: Analisar a distribuição geográfica dos clientes permite identificar quais regiões apresentam maior demanda e potencial de crescimento. Isso pode direcionar esforços de marketing e expansão, adaptando a estratégia de acordo com as características de cada região.
 
