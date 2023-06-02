@@ -1,0 +1,65 @@
+WITH tabela AS (
+-- Consulta para criar a tabela "tabela"
+  SELECT
+    PARSE_DATE("%Y%m%d", event_date) data_particao, -- Converte a coluna event_date para o formato de data
+    user_pseudo_id,
+    ROW_NUMBER() OVER (PARTITION BY user_pseudo_id ORDER BY user_pseudo_id,event_timestamp,event_name) AS hit_number, -- Atribui um número de sequência para cada evento do usuário
+    event_name,
+    event_timestamp,
+    (SELECT e.value.string_value FROM UNNEST(event_params) e WHERE e.key = 'page_title') pagina, -- Obtém o valor da chave 'page_title' do array event_params
+    device.category,
+    device.mobile_brand_name,
+    device.mobile_model_name,
+    device.operating_system,
+    geo.continent AS Continente,
+    geo.sub_continent AS SubContinente,
+    geo.country AS Pais,
+    geo.region AS Regiao,
+    geo.city AS Cidade,
+    traffic_source.medium AS Midia,
+    traffic_source.name AS Nome_Midia,
+    traffic_source.source AS Origem_Trafego,
+    platform
+   FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+   where _TABLE_SUFFIX between '20201101' AND '20210131'
+),
+
+Rejeicao as (
+-- Consulta para criar a tabela "Rejeicao"
+  SELECT user_pseudo_id,
+    (
+    SELECT value.int_value
+    FROM UNNEST(event_params)
+    WHERE key = 'ga_session_id') AS ga_session_id, -- Obtém o valor da chave 'ga_session_id' do array event_params
+    COUNT(DISTINCT CASE WHEN event_name = "page_view" THEN CONCAT(user_pseudo_id,event_timestamp)
+    END
+      ) AS page_views -- Conta o número de visualizações de página por usuário
+  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+  where _TABLE_SUFFIX between '20201101' AND '20210131'
+  GROUP BY user_pseudo_id, ga_session_id
+)
+
+SELECT
+-- Selecionar as colunas para a consulta final
+  data_particao,
+  category,
+  operating_system,
+  Continente,
+  SubContinente,
+  Pais,
+  Regiao,
+  Cidade,
+  Midia,
+  COUNT(DISTINCT CASE WHEN event_name = 'session_start' THEN CONCAT(T.user_pseudo_id,event_timestamp) END) AS Qtd_sessao_inicio, -- Conta o número de visitas distintas por usuário
+  COUNT(DISTINCT CASE WHEN event_name = 'purchase' THEN CONCAT(T.user_pseudo_id,event_timestamp)  END) AS Qtd_Pedidos, -- Conta o número de pedidos distintos por usuário
+  COUNT(DISTINCT CASE WHEN page_views = 1 THEN ga_session_id END) Sessoes_1_Pageview, -- Conta o número de sessões com apenas uma visualização de página
+  COUNT(DISTINCT CASE WHEN event_name = "page_view" THEN CONCAT(T.user_pseudo_id,T.event_timestamp) end) AS Qtd_Visita_Pag -- Conta o número de visitas de página distintas por usuário
+COUNT(DISTINCT CASE WHEN event_name = "view_item" THEN CONCAT(T.user_pseudo_id,T.event_timestamp) end) AS Qtd_Visita_Produto, -- Conta o número de visitas ao produto distintas por usuário
+COUNT(DISTINCT CASE WHEN event_name = "add_to_cart" THEN CONCAT(T.user_pseudo_id,T.event_timestamp) end) AS Qtd_carrinho -- Conta qtd de itens no carrinho por usuário
+
+FROM tabela T
+left
+  join Rejeicao R
+  on T.user_pseudo_id = R.user_pseudo_id
+GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+
