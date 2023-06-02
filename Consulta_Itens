@@ -1,0 +1,51 @@
+WITH tabela AS (
+  -- Consulta para criar a tabela "tabela"
+  SELECT
+    PARSE_DATE("%Y%m%d", event_date) data_particao, -- Converte a coluna event_date para o formato de data
+    concat(user_pseudo_id,(SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id')) Visit_ID,
+
+    user_pseudo_id,
+    device.category,
+    device.operating_system,
+    geo.continent AS Continente,
+    geo.sub_continent AS SubContinente,
+    geo.country AS Pais,
+    geo.region AS Regiao,
+    geo.city AS Cidade,
+    traffic_source.medium AS Midia
+  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+  WHERE event_name = 'add_to_cart'
+  AND _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+) ,
+dados_itens as (
+  SELECT distinct PARSE_DATE("%Y%m%d", event_date) data_particao,
+  concat(user_pseudo_id,(SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id')) Visit_ID,
+  items.item_id, items.quantity, items.item_name, items.price
+FROM
+`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+UNNEST (items) AS items
+where event_name = 'add_to_cart'
+and _TABLE_SUFFIX  between '20201101' AND '20210131'
+)
+SELECT
+  -- Selecionar as colunas para a consulta final
+  data_particao,
+  category,
+  operating_system,
+  Continente,
+  SubContinente,
+  Pais,
+  Regiao,
+  Cidade,
+  Midia,
+  items.item_id AS item_id, -- Seleciona o ID do item
+  items.item_name AS item_name, -- Seleciona o nome do item
+  SUM(quantity) AS item_quantity, -- Soma a quantidade dos itens
+  SUM(price) as item_price -- Soma a valor dos itens
+FROM dados_itens D
+inner
+  join Tabela T
+  on T.Visit_ID = D.Visit_ID
+  and T.data_particao = D.data_particao
+GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+
