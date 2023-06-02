@@ -1,0 +1,44 @@
+WITH session_details AS (
+  SELECT
+--- Taxa de Rejeição
+  ROUND(COUNT(DISTINCT CASE WHEN page_views = 1 THEN ga_session_id END)/COUNT(DISTINCT CONCAT(user_pseudo_id, ga_session_id))*100,2) AS session_bounce_rate,
+--- Taxa de Engajamento
+  ROUND(SUM(CAST(session_engaged AS int))/COUNT(DISTINCT CONCAT(user_pseudo_id, ga_session_id)),2) AS session_engagement_rate,
+--- Duração da Sessão
+  ROUND(SUM(engagement_time_msec)/1000/COUNT(DISTINCT CONCAT(user_pseudo_id, ga_session_id)),2) AS session_duration,
+FROM(
+  SELECT
+    user_pseudo_id,
+    (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS ga_session_id,
+    COUNT(DISTINCT CASE WHEN event_name = "page_view" THEN CONCAT(user_pseudo_id,event_timestamp) END) AS page_views,
+     MAX((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'session_engaged')) AS session_engaged,
+      MAX((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'engagement_time_msec')) AS engagement_time_msec
+  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+  where _TABLE_SUFFIX between '20201101' AND '20210131'
+  
+  GROUP BY user_pseudo_id,ga_session_id)
+)
+SELECT
+--- Usuários Únicos
+  COUNT(DISTINCT user_pseudo_id) AS unique_user_count,
+--- Novos Usuários
+  COUNT(DISTINCT CASE WHEN event_name = "first_visit" THEN  user_pseudo_id END) AS new_users,
+--- Número de Sessões
+  COUNT(DISTINCT CASE WHEN event_name = "session_start" THEN CONCAT(user_pseudo_id,event_timestamp) END) AS sessions,
+--- Número de Visualizações de Página
+  COUNT(DISTINCT CASE WHEN event_name = "page_view" THEN CONCAT(user_pseudo_id,event_timestamp) END) AS page_views,
+--- Número de Visualizações de Página por Sessão
+  ROUND(COUNT(DISTINCT CASE WHEN event_name = "page_view" THEN CONCAT(user_pseudo_id,event_timestamp) END)/
+      COUNT(DISTINCT CASE WHEN event_name = "session_start" THEN CONCAT(user_pseudo_id,event_timestamp) END),2) AS page_per_session,
+--- Número de Sessões por Usuário
+  ROUND(COUNT(DISTINCT CASE WHEN event_name = "session_start" THEN CONCAT(user_pseudo_id,event_timestamp) END)/ 
+        COUNT(DISTINCT user_pseudo_id),2) AS sessions_per_user,
+  MAX(session_bounce_rate) AS session_bounce_rate,
+  MAX(session_engagement_rate) AS session_engagement_rate,
+  MAX(session_duration) AS session_duration
+FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+CROSS JOIN (SELECT * FROM session_details) 
+where _TABLE_SUFFIX between '20201101' AND '20210131'
+
+
+-- adaptado de https://business-metric.ru/prostye-sql-zaprosy-bigquery-na-dannyh-google-analytics
