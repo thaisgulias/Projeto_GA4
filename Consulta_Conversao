@@ -1,0 +1,26 @@
+WITH session_details AS (
+  -- Subconsulta para criar a tabela "session_details"
+  SELECT
+    PARSE_DATE("%Y%m%d", event_date) data_particao,
+    device.operating_system AS sistema_operacional, 
+    COUNT(DISTINCT CASE WHEN event_name = 'view_item' THEN user_pseudo_id END) AS Qtde_escolha_produto, 
+    COUNT(DISTINCT CASE WHEN event_name = 'add_to_cart' THEN user_pseudo_id END) AS Qtde_adicao_carrinho, 
+    COUNT(DISTINCT CASE WHEN event_name = 'purchase' THEN user_pseudo_id END) AS Qtde_compra, 
+    COUNT(DISTINCT CASE WHEN event_name = 'session_start' THEN CONCAT(user_pseudo_id, event_timestamp) END) AS Qtde_sessao_inicio,
+    COUNT(DISTINCT CASE WHEN event_name = 'purchase' THEN CONCAT(user_pseudo_id, event_timestamp) END) AS Qtde_pedidos,
+    COUNT(DISTINCT CASE WHEN event_name = 'page_view' THEN CONCAT(user_pseudo_id, event_timestamp) END) AS Qtde_visita_pag
+  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+  WHERE _TABLE_SUFFIX BETWEEN '20201101' AND '20210131' 
+  GROUP BY 1,2
+)
+
+SELECT
+  data_particao,
+  sistema_operacional,
+  Qtde_escolha_produto, 
+  Qtde_adicao_carrinho, 
+  Qtde_compra, 
+  ROUND(SAFE_DIVIDE(Qtde_pedidos, Qtde_escolha_produto) * 100, 2) AS taxa_conversao_escolha_produto, -- Taxa de conversão na etapa de escolha do produto (em relação ao número de usuários na etapa de busca)
+  ROUND(SAFE_DIVIDE(Qtde_adicao_carrinho, Qtde_escolha_produto) * 100, 2) AS taxa_conversao_adicao_carrinho, -- Taxa de conversão na etapa de adição ao carrinho (em relação ao número de usuários na etapa de escolha do produto)
+  ROUND(SAFE_DIVIDE(Qtde_pedidos, Qtde_visita_pag) * 100, 2) AS taxa_conversao_compra  -- Taxa de conversão na etapa de compra (em relação ao número de usuários na etapa de adição ao carrinho)
+FROM session_details
